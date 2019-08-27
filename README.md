@@ -1016,7 +1016,381 @@ echo "#############"
 command ls
 ```
 
+#### Regular expressions
+
+```bash
+E_NOPATTERN=71
+
+DICT=/usr/share/dict/linux.words
+
+if [ -z "$1" ]
+then
+    echo 
+    echo "Usage: "
+    echo "`basename $0` \"pattern,\""
+    echo "where \"pattern\" is in the form"
+    echo
+    echo "The o's are letters you already know,"
+    echo "and the periods are missing letters."
+    echo "Letters and periods can be in any position."
+    echo "For example: w...i...n"
+    echo
+    exit $E_NOPATTERN
+fi
+
+# ^ - beginning of the line
+# $ - end of the line
+grep ^"$1"$ "$DICT"
+```
+
+##### Sed
+
+```bash
+E_BADARGS=65
+
+# if no files passed
+if [ $# -eq 0 ]
+then
+    echo "Usage: `basename $0` file"
+    exit $E_BADARGS
+else
+    # operates on the position params
+    for i
+    do	
+    	# deletes from the beginning to first blank, deletes all blank lines
+        sed -e '1,/^$/d' -e '/^$/d' $i 
+    done
+fi        
+```
+
+##### Globing
+
+- `ls -l [fw]*` - list files whose names start either from **f** or **w** 
+- `ls -l [e-q]*` - files whose names can begin with letters from **e** to **q**
+- `ls -l {w*. *oo*}` -files whose names start with  **w** of having **oo** inside 
+- `echo w*` - files whose names  start with **w** 
+- `echo woo?.txt` - ? - replaces one letter 
+
+```bash
+# * - every file name in a current dir
+for file in *
+do 
+    ls -la "$file"
+    # include .files
+    shopt -s nullglob
+done    
+```
+
+#### Input Output Redirection
+
+##### STDOUT, STDIN, STDERR
+
+```bash
+file=wood.txt
+# redirect a standard output into file
+echo "this line is sent to $file" 1>$file
+```
+
+- `2> <file>` - redirects standard errors: `something 2>>wood.xml`
+
+- redirects std output and errors to wood1.txt: `something >> wood1.txt 2>&1`
+
+```bash
+echo 12345 > fd.txt
+# open fd.txt and assign 3 file descriptor
+exec 3<>fd.txt
+# read only 2 chars from file
+read -n 2 <&3
+# write a decimal point
+echo -n . >&3
+# closing file
+exec 3>&-
+cat fd.txt
+```
+
+```bash
+E_FILE_ACCESS=70
+E_BADARGS=71
+# is the file readable
+if [ ! -r "$1" ]
+then
+    echo "Can't read from inpt file!"
+    echo "Usage: $0 input-file output-file"
+    exit $E_FILE_ACCESS
+fi
+# is second parameter passed
+if [ -z "$2" ]
+then 
+    echo "Specify output file!"
+    echo "Usage: $0 input-file output-file"
+    exit $E_BADARGS
+fi
+# link file descriptor 4 with stdinput
+exec 4<&0
+# read from input file
+exec <$1
+
+# link file descriptor 7 with stdoutput
+exec 7>&1
+# write to the output file
+exec > $2
+
+# transform lower case to upper case
+tr a-z A-Z
+
+#restore std output and close file desc 7
+exec 1>&7 7>&-
+#restore std inut and close file desc 4
+exec 0<&4 4<&-    
+
+
+```
+
+```bash
+count=0
+# open wood.txt and assing 3
+exec 3<> wood.txt
+
+# read from the file
+while read line <&3
+    do
+    {
+        echo $line
+        (( count++ ));
+
+    }
+    done
+# close the file descriptors    
+exec 3>&-
+
+echo "Number of read lines is $count"
+```
+
+#### Functions
+
+```bash
+function1 (){
+    echo "call \"f2\" from \"f1\"."
+    function2
+}
+
+function2 (){
+        echo "this is \"f2\""
+}
+
+function1
+```
+
+- Nested function
+
+```bash
+function1 (){
+
+    function2 (){
+        echo "this is nested function"
+    }
+}
+
+function1
+function2
+```
+
+- `$FUNCNAME` - variable with function name
+- \$1, \$2.. - params passed to a function
+- $? - exit status
+
+```bash
+#!/bin/bash
+
+E_PARAM_ERR=250
+EQUAL=251
+
+function_max(){
+    if [ -z "$2" ]
+    then
+        return $E_PARAM_ERR
+    fi 
+
+    if [ "$1" -eq "$2" ]
+    then
+        return $EQUAL
+    else
+        if [ "$1" -gt "$2" ]
+        then
+            return $1
+        else 
+            return $2
+        fi
+    fi                     
+}
+
+function_max 12 13 100
+return_value=$?
+
+if [ "$return_value" -eq $E_PARAM_ERR ]
+then
+    echo "Function needs two parameters"
+elif [ "$return_value" -eq $EQUAL ]
+then
+    echo "Numbers are equal"
+else
+    echo "Max number is $return_value"
+fi            
+```
+
+- $# - no of arguments
+
+```bash
+ARGS=1
+E_BADARGS=85
+
+FILE=/etc/passwd
+
+pattern=$1
+
+if [ $# -ne "$ARGS" ]
+then
+    echo "Usage: `basename $0` USERNAME"
+    exit $E_BADARGS
+fi 
+
+get_real_name()
+{
+    while read line
+    do
+    # -F":" - field delimeter
+        echo "$line" | grep $1 | awk -F":" '{ print $5 }'
+    done    
+} <$FILE # reading a file
+
+get_real_name $pattern
+```
+
+#### Arrays
+
+- `some_var[]` - array declaration 1
+
+```
+arr[0]=20
+arr[1]=30
+
+echo -e "${arr[0]} \n${arr[1]}"
+```
+
+- `declare -a some_var ` array declaration 2
+
+```bash
+declare -a arr
+arr=( 10 20 30 40 50 60)
+
+echo -e "${arr[0]} \n${arr[1]} \n${arr[2]} \n${arr[3]} \n${arr[4]}"
+```
+
+- `arr=()` - array declaration 3
+
+```bash
+arr=( [0]=first [1]="second" [7]=45 )
+
+
+echo -e "${arr[0]} \n${arr[1]} \n${arr[7]} "
+```
 
 
 
+```bash
+
+# assigning a string
+a=something123
+# * everything
+echo ${a[*]}
+# [0] first element
+echo ${a[0]}
+# [1] second element
+echo ${a[1]}
+# size of the array
+echo ${#a[@]}
+```
+
+```bash
+arr=( zero one two )
+
+echo ${arr[0]}
+# size of the first element
+echo ${#arr[0]}
+# size of an array
+echo ${#arr[*]}
+```
+
+```bash
+declare -a colors
+
+echo "Your favourite colors separated by space: "
+# you can pass multiple elemnets
+read -a colors
+# size of an array
+count=${#colors[@]}
+
+i=0
+
+while [ "$i" -lt "$count" ]
+do
+    echo ${colors[$i]}
+    (( i++ ))
+done
+
+echo ${colors[*]}
+# delete 3rd element
+unset ${colors[2]}
+echo ${colors[*]}
+# delete all elements
+unset colors
+echo "no colors. colors gone"
+echo ${colors[*]}
+```
+
+- Reading file into an array
+
+```bash
+FILE=wood.txt
+declare -a arr_file
+# reading file to the array
+arr_file=( `cat "$FILE"` )
+
+echo ${arr_file[*]}
+size=${#arr_file[*]}
+echo "array size is $size"
+```
+
+- Bubble sort
+
+```bash
+
+swap()
+{
+        # temporary variable
+        local tmp=${colors[$1]}
+        colors[$1]=${colors[$2]}
+        colors[$2]=$tmp
+
+    return
+}
+
+declare -a colors
+
+colors=( red black blue white brown )
+# size of an array
+size=${#colors[@]}
+
+for (( last = $size -1 ; last >0 ; last--))
+do
+    for (( i = 0 ; i < last ; i++))
+    do
+        [[ "${colors[$i]}" > "${colors[$((i+1))]}" ]] && swap $i $((i+1))
+    done
+done        
+
+echo ${colors[@]}
+```
+
+#### Lists
 
