@@ -1,27 +1,11 @@
 #!/bin/bash
+# executed after each statement 
+trap 'echo "LISTING VARIABLES: a = \"$a\""' DEBUG
 
-swap()
-{
-        # temporary variable
-        local tmp=${colors[$1]}
-        colors[$1]=${colors[$2]}
-        colors[$2]=$tmp
+a=3; line=$LINENO
 
-    return
-}
+echo " \$a initialized to $a on line $line"
 
-declare -a colors
+let "a *= 2"; line=$LINENO
 
-colors=( red black blue white brown )
-# size of an array
-size=${#colors[@]}
-
-for (( last = $size -1 ; last >0 ; last--))
-do
-    for (( i = 0 ; i < last ; i++))
-    do
-        [[ "${colors[$i]}" > "${colors[$((i+1))]}" ]] && swap $i $((i+1))
-    done
-done        
-
-echo ${colors[@]}
+echo " \$a multiplied by 2 on line $line."

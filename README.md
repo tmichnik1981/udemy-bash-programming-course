@@ -1394,3 +1394,151 @@ echo ${colors[@]}
 
 #### Lists
 
+- && - and
+
+```bash
+E_BADARGS=65
+
+if [ ! -z "$1" ] && echo "First parameter is $1" && [ ! -z "$2" ] && echo "Second parameter is $2"
+then
+    echo "Two parameters are passed to the script"
+else
+    echo "Usage `basename $0` arg1 arg2" && exit $E_BADARGS
+fi 
+        
+```
+
+- || - or
+
+```bash
+[ -z "$1" ] || [ ! -f "$1" ] || (rm -f "$1"; echo "removed")
+```
+
+```bash
+a=1
+b=2
+c=3
+
+[ "$a" -gt "$b" ] || [ "$b" -gt "$c" ] || ( (( c += a + b)) ; echo "$c" )
+
+```
+
+#### Debugging
+
+- display line number of the operation
+
+```bash
+rm abc
+let " line = $LINENO - 1 "
+
+echo "rm is on the line $line"
+```
+
+- check for syntax erros: `sh -n first.sh`
+- verbose mode `set -v`
+
+```
+set -v
+
+for n in 1 2 3 4
+do
+    echo "$n"
+
+ exit 0   
+```
+
+- displays lines of code, output, errors: `set -x yourstript.sh`
+
+```bash
+a=3
+
+if [$a -gt 0]
+then
+    echo $a
+fi  
+```
+
+- debug condition
+
+```bash
+debug_condition ()
+{
+    E_CONDITION=99
+
+    if [ ! $1 ]
+        then
+            echo "File $0: Condition failed"
+            exit $E_CONDITION
+        else
+            return
+    fi
+}
+
+a=3
+b=2
+
+if [ "$a" -lt "$b" ]
+then
+    (( a++ ))
+    echo "$a"
+fi
+
+condition="$a -lt $b"
+debug_condition "$condition"
+```
+
+- signals, exit trap
+
+```bash
+# executed when exit signal occures
+trap 'echo "Listing variables: m=$m" n=$n o=$o' EXIT
+
+m=1
+n=2
+o=3
+
+let "sum = $m+$n+$o"
+
+echo "the sum is $sum"
+```
+
+- exit traps, turning off
+
+```bash
+E_BADARGS=65
+E_NOFILE=66
+
+trap 'echo "no param"' EXIT
+if [ -z "$1" ]
+then
+    exit $E_BADARGS
+fi
+#turns off the exit trap
+trap - EXIT
+
+trap 'echo "File $1: not found"' EXIT
+if [ -f "$1" ]
+then
+    rm $1
+    echo "$1 removed"
+else
+    exit $E_NOFILE
+fi
+trap - EXIT        
+```
+
+- debug signal trap
+
+```bash
+# executed after each statement 
+trap 'echo "LISTING VARIABLES: a = \"$a\""' DEBUG
+
+a=3; line=$LINENO
+
+echo " \$a initialized to $a on line $line"
+
+let "a *= 2"; line=$LINENO
+
+echo " \$a multiplied by 2 on line $line."
+```
+
